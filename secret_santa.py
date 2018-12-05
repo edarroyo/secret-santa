@@ -111,6 +111,7 @@ def main(argv=None):
                 raise Usage(help_message)
                 
         config = parse_yaml()
+        random.seed(config['RANDOMSEED'])
         for key in REQRD:
             if key not in config.keys():
                 raise Exception(
@@ -126,7 +127,7 @@ def main(argv=None):
             name, email = re.match(r'([^<]*)<([^>]*)>', person).groups()
             name = name.strip()
             invalid_matches = []
-            for pair in dont_pair:
+            for pair in dont_pair or []:
                 names = [n.strip() for n in pair.split(',')]
                 if name in names:
                     # is part of this pair
@@ -173,7 +174,8 @@ call with the --send argument:
                 santee=pair.reciever.name,
             )
             if send:
-                result = server.sendmail(frm, [to], body)
+                print "Emailing %s <%s>" % (pair.giver.name, to)
+                result = server.sendmail(frm, [to], body.encode('utf-8'))
                 print "Emailed %s <%s>" % (pair.giver.name, to)
 
         if send:
