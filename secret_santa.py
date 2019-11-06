@@ -46,13 +46,14 @@ Subject: {subject}
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.yml')
 
 class Person:
-    def __init__(self, name, email, invalid_matches):
+    def __init__(self, name, email, invalid_matches, pronoun):
         self.name = name
         self.email = email
         self.invalid_matches = invalid_matches
+        self.pronoun = pronoun
     
     def __str__(self):
-        return "%s <%s>" % (self.name, self.email)
+        return "%s <%s> %s" % (self.name, self.email, self.pronoun)
 
 class Pair:
     def __init__(self, giver, reciever):
@@ -124,7 +125,7 @@ def main(argv=None):
         
         givers = []
         for person in participants:
-            name, email = re.match(r'([^<]*)<([^>]*)>', person).groups()
+            name, email, pronoun = re.match(r'([^<]*)<([^>]*)>\s*([FM]+)', person).groups()
             name = name.strip()
             invalid_matches = []
             for pair in dont_pair or []:
@@ -134,7 +135,7 @@ def main(argv=None):
                     for member in names:
                         if name != member:
                             invalid_matches.append(member)
-            person = Person(name, email, invalid_matches)
+            person = Person(name, email, invalid_matches, pronoun)
             givers.append(person)
         
         recievers = givers[:]
@@ -172,6 +173,7 @@ call with the --send argument:
                 subject=subject,
                 santa=pair.giver.name,
                 santee=pair.reciever.name,
+                greeting="Querida" if pair.giver.pronoun == 'F' else 'Querido' ,
             )
             if send:
                 print "Emailing %s <%s>" % (pair.giver.name, to)
