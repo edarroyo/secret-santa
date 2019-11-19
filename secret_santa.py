@@ -21,7 +21,7 @@ for routing mail through gmail.
 For more information, see README.
 '''
 
-REQRD = (
+REQUIRED = (
     'SMTP_SERVER', 
     'SMTP_PORT', 
     'USERNAME', 
@@ -64,7 +64,7 @@ class Pair:
         return "%s ---> %s" % (self.giver.name, self.reciever.name)
 
 def parse_yaml(yaml_path=CONFIG_PATH):
-    return yaml.load(open(yaml_path))    
+    return yaml.load(open(yaml_path), Loader=yaml.FullLoader)
 
 def choose_reciever(giver, recievers):
     choice = random.choice(recievers)
@@ -100,7 +100,7 @@ def main(argv=None):
     try:
         try:
             opts, args = getopt.getopt(argv[1:], "shc", ["send", "help"])
-        except getopt.error, msg:
+        except getopt.error as msg:
             raise Usage(msg)
     
         # option processing
@@ -113,13 +113,13 @@ def main(argv=None):
                 
         config = parse_yaml()
         random.seed(config['RANDOMSEED'])
-        for key in REQRD:
+        for key in REQUIRED:
             if key not in config.keys():
                 raise Exception(
                     'Required parameter %s not in yaml config file!' % (key,))
 
         participants = config['PARTICIPANTS']
-        dont_pair = config['DONT-PAIR']
+        dont_pair = config['DONT-PAIR'] or []
         if len(participants) < 2:
             raise Exception('Not enough participants specified.')
         
@@ -128,7 +128,7 @@ def main(argv=None):
             name, email, pronoun = re.match(r'([^<]*)<([^>]*)>\s*([FM]+)', person).groups()
             name = name.strip()
             invalid_matches = []
-            for pair in dont_pair or []:
+            for pair in dont_pair:
                 names = [n.strip() for n in pair.split(',')]
                 if name in names:
                     # is part of this pair
@@ -141,17 +141,7 @@ def main(argv=None):
         recievers = givers[:]
         pairs = create_pairs(givers, recievers)
         if not send:
-            print """
-Test pairings:
-                
-%s
-                
-To send out emails with new pairings,
-call with the --send argument:
-
-    $ python secret_santa.py --send
-            
-            """ % ("\n".join([str(p) for p in pairs]))
+            print("""Test pairings:\n\n%s\n\nTo send out emails with new pairings, call with the --send argument:\n\n$ python secret_santa.py --send""" % ("\n".join([str(p) for p in pairs])))
         
         if send:
             server = smtplib.SMTP(config['SMTP_SERVER'], config['SMTP_PORT'])
@@ -176,16 +166,16 @@ call with the --send argument:
                 greeting="Querida" if pair.giver.pronoun == 'F' else 'Querido' ,
             )
             if send:
-                print "Emailing %s <%s>" % (pair.giver.name, to)
+                print("Emaling %s <%s>" % (pair.giver.name, to))
                 result = server.sendmail(frm, [to], body.encode('utf-8'))
-                print "Emailed %s <%s>" % (pair.giver.name, to)
+                print("Emailed %s <%s>" % (pair.giver.name, to))
 
         if send:
             server.quit()
         
-    except Usage, err:
-        print >> sys.stderr, sys.argv[0].split("/")[-1] + ": " + str(err.msg)
-        print >> sys.stderr, "\t for help use --help"
+    except Usage as err:
+        print( sys.stderr, sys.argv[0].split("/")[-1] + ": " + str(err.msg))
+        print( sys.stderr, "\t for help use --help")
         return 2
 
 
