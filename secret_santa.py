@@ -1,5 +1,4 @@
 import yaml
-# sudo pip install pyyaml
 import re
 import random
 import smtplib
@@ -22,15 +21,15 @@ For more information, see README.
 '''
 
 REQUIRED = (
-    'SMTP_SERVER', 
-    'SMTP_PORT', 
-    'USERNAME', 
-    'PASSWORD', 
-    'TIMEZONE', 
-    'PARTICIPANTS', 
-    'DONT-PAIR', 
-    'FROM', 
-    'SUBJECT', 
+    'SMTP_SERVER',
+    'SMTP_PORT',
+    'USERNAME',
+    'PASSWORD',
+    'TIMEZONE',
+    'PARTICIPANTS',
+    'DONT-PAIR',
+    'FROM',
+    'SUBJECT',
     'MESSAGE',
 )
 
@@ -45,45 +44,50 @@ Subject: {subject}
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.yml')
 
+
 class Person:
     def __init__(self, name, email, invalid_matches, pronoun):
         self.name = name
         self.email = email
         self.invalid_matches = invalid_matches
         self.pronoun = pronoun
-    
+
     def __str__(self):
         return "%s <%s> %s" % (self.name, self.email, self.pronoun)
+
 
 class Pair:
     def __init__(self, giver, reciever):
         self.giver = giver
         self.reciever = reciever
-    
+
     def __str__(self):
         return "%s ---> %s" % (self.giver.name, self.reciever.name)
+
 
 def parse_yaml(yaml_path=CONFIG_PATH):
     return yaml.load(open(yaml_path), Loader=yaml.FullLoader)
 
+
 def choose_reciever(giver, recievers):
     choice = random.choice(recievers)
     if choice.name in giver.invalid_matches or giver.name == choice.name:
-        if len(recievers) is 1:
+        if len(recievers) == 1:
             raise Exception('Only one reciever left, try again')
         return choose_reciever(giver, recievers)
     else:
         return choice
 
+
 def create_pairs(g, r):
     givers = g[:]
-    recievers = r[:]
+    receivers = r[:]
     pairs = []
     for giver in givers:
         try:
-            reciever = choose_reciever(giver, recievers)
-            recievers.remove(reciever)
-            pairs.append(Pair(giver, reciever))
+            receiver = choose_reciever(giver, receivers)
+            receivers.remove(receiver)
+            pairs.append(Pair(giver, receiver))
         except:
             return create_pairs(g, r)
     return pairs
@@ -102,7 +106,7 @@ def main(argv=None):
             opts, args = getopt.getopt(argv[1:], "shc", ["send", "help"])
         except getopt.error as msg:
             raise Usage(msg)
-    
+
         # option processing
         send = False
         for option, value in opts:
@@ -110,7 +114,7 @@ def main(argv=None):
                 send = True
             if option in ("-h", "--help"):
                 raise Usage(help_message)
-                
+
         config = parse_yaml()
         random.seed(config['RANDOMSEED'])
         for key in REQUIRED:
@@ -122,7 +126,7 @@ def main(argv=None):
         dont_pair = config['DONT-PAIR'] or []
         if len(participants) < 2:
             raise Exception('Not enough participants specified.')
-        
+
         givers = []
         for person in participants:
             name, email, pronoun = re.match(r'([^<]*)<([^>]*)>\s*([FM]+)', person).groups()
@@ -137,12 +141,13 @@ def main(argv=None):
                             invalid_matches.append(member)
             person = Person(name, email, invalid_matches, pronoun)
             givers.append(person)
-        
-        recievers = givers[:]
-        pairs = create_pairs(givers, recievers)
+
+        receivers = givers[:]
+        pairs = create_pairs(givers, receivers)
         if not send:
-            print("""Test pairings:\n\n%s\n\nTo send out emails with new pairings, call with the --send argument:\n\n$ python secret_santa.py --send""" % ("\n".join([str(p) for p in pairs])))
-        
+            print("""Test pairings:\n\n%s\n\nTo send out emails with new pairings, call with the --send 
+            argument:\n\n$ python secret_santa.py --send""" % ("\n".join([str(p) for p in pairs])))
+
         if send:
             server = smtplib.SMTP(config['SMTP_SERVER'], config['SMTP_PORT'])
             server.starttls()
@@ -150,32 +155,32 @@ def main(argv=None):
         for pair in pairs:
             zone = pytz.timezone(config['TIMEZONE'])
             now = zone.localize(datetime.datetime.now())
-            date = now.strftime('%a, %d %b %Y %T %Z') # Sun, 21 Dec 2008 06:25:23 +0000
-            message_id = '<%s@%s>' % (str(time.time())+str(random.random()), socket.gethostname())
+            date = now.strftime('%a, %d %b %Y %T %Z')  # Sun, 21 Dec 2008 06:25:23 +0000
+            message_id = '<%s@%s>' % (str(time.time()) + str(random.random()), socket.gethostname())
             frm = config['FROM']
             to = pair.giver.email
             subject = config['SUBJECT'].format(santa=pair.giver.name, santee=pair.reciever.name)
-            body = (HEADER+config['MESSAGE']).format(
-                date=date, 
-                message_id=message_id, 
-                frm=frm, 
-                to=to, 
+            body = (HEADER + config['MESSAGE']).format(
+                date=date,
+                message_id=message_id,
+                frm=frm,
+                to=to,
                 subject=subject,
                 santa=pair.giver.name,
                 santee=pair.reciever.name,
-                greeting="Querida" if pair.giver.pronoun == 'F' else 'Querido' ,
+                greeting="Querida" if pair.giver.pronoun == 'F' else 'Querido',
             )
             if send:
-                print("Emaling %s <%s>" % (pair.giver.name, to))
-                result = server.sendmail(frm, [to], body.encode('utf-8'))
+                print("Emailing %s <%s>" % (pair.giver.name, to))
+                server.sendmail(frm, [to], body.encode('utf-8'))
                 print("Emailed %s <%s>" % (pair.giver.name, to))
 
         if send:
             server.quit()
-        
+
     except Usage as err:
-        print( sys.stderr, sys.argv[0].split("/")[-1] + ": " + str(err.msg))
-        print( sys.stderr, "\t for help use --help")
+        print(sys.stderr, sys.argv[0].split("/")[-1] + ": " + str(err.msg))
+        print(sys.stderr, "\t for help use --help")
         return 2
 
 
