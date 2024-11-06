@@ -16,9 +16,9 @@ Setup
 ------------
 
 1. Setup your machine: https://evinsellin.medium.com/an-opinionated-python-setup-for-mac-2021215dba8f
-1. Clone repo
-1. pipenv install
-1. pipenv shell
+1. `git clone git@github.com:edarroyo/secret-santa.git`
+1. `pipenv install`
+1. `pipenv shell`
 
 
 Usage
